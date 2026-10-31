@@ -33,17 +33,17 @@ public class AppSmokeTest extends ActivityInstrumentationTestCase2<MainActivity>
   public void testStartupAndNavigation() throws Exception {
     ready();
     assertEquals("true", js("typeof AndroidBridge.saveBackup === 'function'"));
-    assertEquals("true", js("act('calendar'); screen === 'calendar' && document.body.innerText.includes('Calendar')"));
-    assertEquals("true", js("act('progress'); screen === 'progress'"));
+    assertEquals("true", js("act('calendar'); document.querySelector('.nav button.active').innerText.includes('Calendar')"));
+    assertEquals("true", js("act('progress'); document.querySelector('h1').innerText === 'Progress'"));
     js("act('home')");
   }
   public void testCreateAndPersistProgram() throws Exception {
     ready();
     js("window.alert=()=>{}; act('create'); document.getElementById('name').value='Emulator test'; document.getElementById('goal').value='Practice daily'; act('saveCreate')");
-    assertEquals("true", js("db.programs.some(p=>p.name==='Emulator test')"));
-    assertEquals("true", js("JSON.parse(localStorage.getItem(KEY)).programs.some(p=>p.name==='Emulator test')"));
+    assertEquals("true", js("document.querySelector('h1').innerText === 'Emulator test'"));
+    assertEquals("true", js("JSON.parse(localStorage.getItem('curriculum.app.v1')).programs.some(p=>p.name==='Emulator test')"));
     getInstrumentation().runOnMainSync(() -> web().reload());
     ready();
-    assertEquals("true", js("db.programs.some(p=>p.name==='Emulator test')"));
+    assertEquals("true", js("document.body.innerText.includes('Emulator test')"));
   }
 }
