@@ -10,6 +10,11 @@ import android.view.View;
 import android.graphics.Color;
 import android.widget.FrameLayout;
 import java.io.OutputStream;
+import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import org.json.JSONObject;
 import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends Activity {
@@ -62,7 +67,56 @@ public class MainActivity extends Activity {
     });
     web.loadUrl("https://curriculum.local/");
   }
+  private void finishAI(String id, int status, String body, String error) {
+    runOnUiThread(() -> {
+      try {
+        JSONObject result = new JSONObject();
+        result.put("id", id);
+        result.put("status", status);
+        result.put("body", body == null ? "" : body);
+        result.put("error", error == null ? "" : error);
+        web.evaluateJavascript("window.__curriculumNativeResponse && window.__curriculumNativeResponse("
+            + result.toString() + ")", null);
+      } catch (Exception ignored) {}
+    });
+  }
+  private static String readStream(InputStream stream) throws Exception {
+    if (stream == null) return "";
+    try (InputStream in = stream; ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+      byte[] buffer = new byte[8192]; int n;
+      while ((n = in.read(buffer)) != -1) {
+        if (out.size() + n > 6_000_000) throw new Exception("API response too large");
+        out.write(buffer, 0, n);
+      }
+      return out.toString("UTF-8");
+    }
+  }
   private class BackupBridge {
+    @JavascriptInterface public void requestAI(String id, String apiKey, String payload) {
+      if (id == null || !id.matches("[a-zA-Z0-9_-]{1,80}")) return;
+      new Thread(() -> {
+        HttpURLConnection connection = null;
+        try {
+          connection = (HttpURLConnection)new URL("https://api.openai.com/v1/chat/completions").openConnection();
+          connection.setRequestMethod("POST");
+          connection.setConnectTimeout(20000);
+          connection.setReadTimeout(90000);
+          connection.setDoOutput(true);
+          connection.setRequestProperty("Authorization", "Bearer " + apiKey);
+          connection.setRequestProperty("Content-Type", "application/json");
+          try (OutputStream out = connection.getOutputStream()) {
+            out.write(payload.getBytes(StandardCharsets.UTF_8));
+          }
+          int status = connection.getResponseCode();
+          String body = readStream(status >= 400 ? connection.getErrorStream() : connection.getInputStream());
+          finishAI(id, status, body, "");
+        } catch (Exception e) {
+          finishAI(id, 0, "", "Network request failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+        } finally {
+          if (connection != null) connection.disconnect();
+        }
+      }).start();
+    }
     @JavascriptInterface public void saveBackup(String data) {
       runOnUiThread(()->{
         pendingBackup=data;
