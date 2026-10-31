@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.webkit.*;
 import android.view.ViewGroup;
+import android.view.View;
 import android.graphics.Color;
 import android.widget.FrameLayout;
 import java.io.OutputStream;
@@ -22,6 +23,11 @@ public class MainActivity extends Activity {
     getWindow().setNavigationBarColor(Color.rgb(245,247,244));
     getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
     web=new WebView(this); setContentView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+    web.setOnApplyWindowInsetsListener((view, insets) -> {
+      view.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(),
+          insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+      return insets.consumeSystemWindowInsets();
+    });
     web.getSettings().setJavaScriptEnabled(true);
     web.getSettings().setDomStorageEnabled(true);
     web.getSettings().setAllowFileAccess(false);
